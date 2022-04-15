@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/jcmturner/gokrb5.v7/iana/nametype"
-	"gopkg.in/jcmturner/gokrb5.v7/test/testdata"
-	"gopkg.in/jcmturner/gokrb5.v7/types"
+	"gopkg.in/nodauf/gokrb5.v7/iana/nametype"
+	"gopkg.in/nodauf/gokrb5.v7/test/testdata"
+	"gopkg.in/nodauf/gokrb5.v7/types"
 )
 
 func TestParse(t *testing.T) {
