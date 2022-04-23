@@ -11,6 +11,7 @@ import (
 
 	"github.com/nodauf/gokrb5/v8/iana/errorcode"
 	"github.com/nodauf/gokrb5/v8/messages"
+	"golang.org/x/net/proxy"
 )
 
 func (cl *Client) SendToKDC(b []byte, realm string) ([]byte, error) {
@@ -79,7 +80,7 @@ func (cl *Client) sendKDCUDP(realm string, b []byte) ([]byte, error) {
 	if err != nil {
 		return r, err
 	}
-	r, err = dialSendUDP(kdcs, b)
+	r, err = dialSendUDP(kdcs, b, cl.settings.proxy)
 	if err != nil {
 		return r, err
 	}
@@ -87,7 +88,7 @@ func (cl *Client) sendKDCUDP(realm string, b []byte) ([]byte, error) {
 }
 
 // dialSendUDP establishes a UDP connection to a KDC.
-func dialSendUDP(kdcs map[int]string, b []byte) ([]byte, error) {
+func dialSendUDP(kdcs map[int]string, b []byte, proxy proxy.Dialer) ([]byte, error) {
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		udpAddr, err := net.ResolveUDPAddr("udp", kdcs[i])
@@ -96,7 +97,15 @@ func dialSendUDP(kdcs map[int]string, b []byte) ([]byte, error) {
 			continue
 		}
 
-		conn, err := net.DialTimeout("udp", udpAddr.String(), 5*time.Second)
+		var conn net.Conn
+		if proxy != nil {
+			conn, err = proxy.Dial("udp", fmt.Sprintf("%s", udpAddr.String()))
+		} else {
+			defaultDialer := &net.Dialer{Timeout: 5 * time.Second}
+			conn, err = defaultDialer.Dial("udp", fmt.Sprintf("%s", udpAddr.String()))
+		}
+
+		//conn, err := net.DialTimeout("udp", udpAddr.String(), 5*time.Second)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error setting dial timeout on connection to %s: %v", kdcs[i], err))
 			continue
@@ -143,7 +152,7 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 	if err != nil {
 		return r, err
 	}
-	r, err = dialSendTCP(kdcs, b)
+	r, err = dialSendTCP(kdcs, b, cl.settings.proxy)
 	if err != nil {
 		return r, err
 	}
@@ -151,7 +160,7 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 }
 
 // dialKDCTCP establishes a TCP connection to a KDC.
-func dialSendTCP(kdcs map[int]string, b []byte) ([]byte, error) {
+func dialSendTCP(kdcs map[int]string, b []byte, proxy proxy.Dialer) ([]byte, error) {
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
 		tcpAddr, err := net.ResolveTCPAddr("tcp", kdcs[i])
@@ -160,7 +169,15 @@ func dialSendTCP(kdcs map[int]string, b []byte) ([]byte, error) {
 			continue
 		}
 
-		conn, err := net.DialTimeout("tcp", tcpAddr.String(), 5*time.Second)
+		var conn net.Conn
+		if proxy != nil {
+			conn, err = proxy.Dial("tcp", fmt.Sprintf("%s", tcpAddr.String()))
+		} else {
+			defaultDialer := &net.Dialer{Timeout: 5 * time.Second}
+			conn, err = defaultDialer.Dial("tcp", fmt.Sprintf("%s", tcpAddr.String()))
+		}
+
+		//conn, err := net.DialTimeout("tcp", tcpAddr.String(), 5*time.Second)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("error setting dial timeout on connection to %s: %v", kdcs[i], err))
 			continue

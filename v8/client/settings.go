@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
+	"golang.org/x/net/proxy"
 )
 
 // Settings holds optional client settings.
@@ -12,6 +14,7 @@ type Settings struct {
 	assumePreAuthentication bool
 	preAuthEType            int32
 	logger                  *log.Logger
+	proxy                   proxy.Dialer
 }
 
 // jsonSettings is used when marshaling the Settings details to JSON format.
@@ -69,6 +72,20 @@ func Logger(l *log.Logger) func(*Settings) {
 // Logger returns the client logger instance.
 func (s *Settings) Logger() *log.Logger {
 	return s.logger
+}
+
+// Proxy used to configure client with a logger.
+//
+// s := NewSettings(kt, Logger(l))
+func Proxy(p proxy.Dialer) func(*Settings) {
+	return func(s *Settings) {
+		s.proxy = p
+	}
+}
+
+// Proxy returns the client proxy tcp configuration.
+func (s *Settings) Proxy() proxy.Dialer {
+	return s.proxy
 }
 
 // Log will write to the service's logger if it is configured.
