@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/nodauf/gokrb5/v8/iana/errorcode"
 	"github.com/nodauf/gokrb5/v8/messages"
+	"github.com/nodauf/gokrb5/v8/types"
 	"golang.org/x/net/proxy"
 )
 
@@ -233,6 +235,31 @@ func sendTCP(conn *net.TCPConn, b []byte) ([]byte, error) {
 func checkForKRBError(b []byte) ([]byte, error) {
 	var KRBErr messages.KRBError
 	if err := KRBErr.Unmarshal(b); err == nil {
+		if len(KRBErr.EData) != 0 {
+			var pas types.PAData
+			errMarshal := pas.Unmarshal(KRBErr.EData)
+			if errMarshal == nil && len(pas.PADataValue) > 0 {
+				errorUint := binary.LittleEndian.Uint32(pas.PADataValue)
+				NTStatusErrorCode := strconv.FormatInt(int64(errorUint), 16)
+				switch strings.ToLower(NTStatusErrorCode) {
+				case "c0000072":
+					KRBErr.EText += " STATUS_ACCOUNT_DISABLED"
+				case "c0000193":
+					KRBErr.EText += " STATUS_ACCOUNT_EXPIRED"
+				case "c000006F":
+					KRBErr.EText += " STATUS_INVALID_LOGON_HOURS"
+				case "c0000071":
+					KRBErr.EText += " STATUS_PASSWORD_EXPIRED"
+				case "c0000224":
+					KRBErr.EText += " STATUS_PASSWORD_MUST_CHANGE"
+				case "c0000234":
+					KRBErr.EText += " STATUS_ACCOUNT_LOCKED_OUT"
+				default:
+					KRBErr.EText += " Unknow error " + strings.ToLower(NTStatusErrorCode)
+				}
+			}
+			//fmt.Println(hex.EncodeToString(pas.PADataValue)[0:8])
+		}
 		return b, KRBErr
 	}
 	return b, nil
